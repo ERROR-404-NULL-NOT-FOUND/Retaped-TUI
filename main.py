@@ -2,6 +2,7 @@ import npyscreen
 import requests
 from websockets.sync.client import connect
 from math import floor
+import curses.ascii
 
 import json
 
@@ -20,6 +21,8 @@ global serverIDList
 
 global token
 global localUser
+global test
+test=0
 
 serverIDList=[]
 channelIDList=[]
@@ -94,13 +97,16 @@ def ws():
     global currentChannel
     global websocket
     global localUser
+    global test
+    if test == 1: return
     message = websocket.recv()
     message = json.loads(message)
     match(message['type']):
         case 'Message':
             if message['channel'] != currentChannel: return
-            messageBox.values.insert(0, npyscreen.FixedText(value=f'[{cache["users"][message["author"]].username if message["author"] in cache["users"].keys() else message["author"]}]: {message["content"] if "content" in message.keys() else ""}'))
+            messageBox.values.insert(0, f'[{cache["users"][message["author"]].username if message["author"] in cache["users"].keys() else message["author"]}]: {message["content"] if "content" in message.keys() else ""}')
         case 'Ready':
+            test=1
             buildUserCache(message['users'])
             buildServerCache(message['servers'])
             buildChannelCache(message['channels'])
@@ -112,10 +118,9 @@ def ws():
             localUser.username = tmpUser['username']
             serverList.name = localUser.username
             serverList.update()
-            #for i in message['servers']:
-            #   messageBox.values.append(i['name'])
+
 def fetchMessages(id: str):
-    r = requests.get(f'https://api.revolt.lea.pet/channels/{id}/messages', headers={'x-session-token': 'mlacYQRjkaMqw4Hssau9ISlprYbUfYf_6psD77fG-DeLKcQvJHUulMGsnDDbcpxE'})
+    r = requests.get(f'https://api.revolt.lea.pet/channels/{id}/messages', headers={'x-session-token': token})
     return r.json()
 
 def fetchChannels(server: server):
@@ -130,7 +135,7 @@ def fetchChannels(server: server):
             channelIDList.append(channel.id)
     channelList.update()
         
-class ServerMultiLineAction(npyscreen.MultiSelectAction):
+class ServerMultiLineAction(npyscreen.MultiLineAction):
     def __init__(self, screen, values=None, value=None, slow_scroll=False, scroll_exit=False, return_exit=False, select_exit=False, exit_left=False, exit_right=False, widgets_inherit_color=False, always_show_cursor=False, allow_filtering=True, **keywords):
         super().__init__(screen, values, value, slow_scroll, scroll_exit, return_exit, select_exit, exit_left, exit_right, widgets_inherit_color, always_show_cursor, allow_filtering, **keywords)
     def actionHighlighted(self, act_on_this, key_press):
@@ -141,7 +146,7 @@ class ServerMultiLineAction(npyscreen.MultiSelectAction):
         channelList.name=act_on_this
         fetchChannels(cache['servers'][currentServer])
 
-class ChannelMultiLineAction(npyscreen.MultiSelectAction):
+class ChannelMultiLineAction(npyscreen.MultiLineAction):
     def __init__(self, screen, values=None, value=None, slow_scroll=False, scroll_exit=False, return_exit=False, select_exit=False, exit_left=False, exit_right=False, widgets_inherit_color=False, always_show_cursor=False, allow_filtering=True, **keywords):
         super().__init__(screen, values, value, slow_scroll, scroll_exit, return_exit, select_exit, exit_left, exit_right, widgets_inherit_color, always_show_cursor, allow_filtering, **keywords)
     def actionHighlighted(self, act_on_this, key_press):
@@ -149,14 +154,16 @@ class ChannelMultiLineAction(npyscreen.MultiSelectAction):
         global channelIDList
         global currentChannel
         global messageBox
+        global inputBox
         currentChannel = channelIDList[channelList.values.index(act_on_this)]
         messageBox.values = []
         messageBox.name = act_on_this
         messageBox.update()
         messages = fetchMessages(currentChannel)
         for i in range(len(messages)):
-            messageBox.values.insert(0, npyscreen.FixedText(value=f'[{cache["users"][messages[i]["author"]].username if messages[i]["author"] in cache["users"].keys() else messages[i]["author"]}]: {messages[i]["content"] if "content" in messages[i].keys() else ""}'))
+            messageBox.values.insert(0, f'[{cache["users"][messages[i]["author"]].username if messages[i]["author"] in cache["users"].keys() else messages[i]["author"]}]: {messages[i]["content"] if "content" in messages[i].keys() else ""}')
         messageBox.update()
+        inputBox.edit()
 
 class serverBox(npyscreen.BoxTitle):
     def __init__(self, screen, contained_widget_arguments=None, *args, **keywords):
@@ -179,6 +186,13 @@ class TestApp(npyscreen.NPSAppManaged):
         self.registerForm("MAIN", MainForm())
 
 
+def sendMessage(totallyanargument):
+    global inputBox
+    global currentChannel
+    global token
+    input=inputBox.value
+    inputBox.value=''
+    requests.post(f'https://api.revolt.lea.pet/channels/{currentChannel}/messages', headers={'x-session-token': token}, data=json.dumps({'content':input}))
 class MainForm(npyscreen.FormBaseNew):
     def create(self):
 
@@ -193,8 +207,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.FIX_MINIMUM_SIZE_WHEN_CREATED=True
         serverList = self.add(serverBox, relx=1, rely=1, width=floor(self.max_x/6), height=floor(self.max_y/2)-1)
         channelList = self.add(channelBox, relx=1, width=floor(self.max_x/6), height=floor(self.max_y/2))
-        messageBox = self.add(messageBox, relx=floor(self.max_x/6)+1,rely=1, height=floor(self.max_y)-6, width=self.max_x-floor(self.max_x/6)-2)
-        inputBox = self.add(inputBox, relx=floor(self.max_x/6)+1, rely=-5, height=4,width=self.max_x-floor(self.max_x/6)-2)
+        messageBox = self.add(messageBox, relx=floor(self.max_x/6)+1,rely=1, height=floor(self.max_y)-6, width=self.max_x-floor(self.max_x/6)-4)
+        inputBox = self.add(inputBox, contained_widget_arguments={"Editable": True}, relx=floor(self.max_x/6)+1, rely=-5, height=4,width=self.max_x-floor(self.max_x/6)-2)
+        inputBox.add_handlers({curses.ascii.CR: sendMessage})
+        #sendBotton = self.add(npyscreen.ButtonPress, relx=self.max_x-10, rely=-5, max_width=6, max_height=4)
         
         websocket = connect("wss://ws.revolt.lea.pet")
         websocket.send(json.dumps({"type": "Authenticate", "token": token}))
@@ -213,6 +229,5 @@ class MainForm(npyscreen.FormBaseNew):
         
         messageBox.relx, messageBox.height = floor(self.max_x/6)+1, floor(self.max_y)-6
         inputBox.relx = floor(self.max_x/6)+1
-        
 TestApp().run()
 #asyncio.run(ws())
