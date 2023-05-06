@@ -188,7 +188,7 @@ class MainForm(npyscreen.FormBaseNew):
         global channelList
         global serverList
         global inputBox
-        token = "mlacYQRjkaMqw4Hssau9ISlprYbUfYf_6psD77fG-DeLKcQvJHUulMGsnDDbcpxE"
+        token = ""
         self.name = 'Retaped TUI'
         self.FIX_MINIMUM_SIZE_WHEN_CREATED=True
         serverList = self.add(serverBox, relx=1, rely=1, width=floor(self.max_x/6), height=floor(self.max_y/2)-1)
