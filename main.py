@@ -3,6 +3,7 @@ import requests
 from websockets.sync.client import connect
 from math import floor
 import curses.ascii
+import threading
 
 import json
 
@@ -21,8 +22,6 @@ global serverIDList
 
 global token
 global localUser
-global test
-test=0
 
 serverIDList=[]
 channelIDList=[]
@@ -97,27 +96,27 @@ def ws():
     global currentChannel
     global websocket
     global localUser
-    global test
-    if test == 1: return
-    message = websocket.recv()
-    message = json.loads(message)
-    match(message['type']):
-        case 'Message':
-            if message['channel'] != currentChannel: return
-            messageBox.values.insert(0, f'[{cache["users"][message["author"]].username if message["author"] in cache["users"].keys() else message["author"]}]: {message["content"] if "content" in message.keys() else ""}')
-        case 'Ready':
-            test=1
-            buildUserCache(message['users'])
-            buildServerCache(message['servers'])
-            buildChannelCache(message['channels'])
-            for i in message['servers']:
-                serverList.values.append(i['name'])
-            tmpUser = requests.get('https://api.revolt.lea.pet/users/@me', headers={'x-session-token': token}).json()
-            localUser = user()
-            localUser.id = tmpUser['_id']
-            localUser.username = tmpUser['username']
-            serverList.name = localUser.username
-            serverList.update()
+    while True:
+        message = websocket.recv()
+        message = json.loads(message)
+        match(message['type']):
+            case 'Message':
+                if message['channel'] == currentChannel:
+                    messageBox.values.append(f'[{cache["users"][message["author"]].username if message["author"] in cache["users"].keys() else message["author"]}]: {message["content"] if "content" in message.keys() else ""}')
+                    messageBox.update()
+            case 'Ready':
+                test=1
+                buildUserCache(message['users'])
+                buildServerCache(message['servers'])
+                buildChannelCache(message['channels'])
+                for i in message['servers']:
+                    serverList.values.append(i['name'])
+                tmpUser = requests.get('https://api.revolt.lea.pet/users/@me', headers={'x-session-token': token}).json()
+                localUser = user()
+                localUser.id = tmpUser['_id']
+                localUser.username = tmpUser['username']
+                serverList.name = localUser.username
+                serverList.update()
 
 def fetchMessages(id: str):
     r = requests.get(f'https://api.revolt.lea.pet/channels/{id}/messages', headers={'x-session-token': token})
@@ -207,18 +206,18 @@ class MainForm(npyscreen.FormBaseNew):
         self.FIX_MINIMUM_SIZE_WHEN_CREATED=True
         serverList = self.add(serverBox, relx=1, rely=1, width=floor(self.max_x/6), height=floor(self.max_y/2)-1)
         channelList = self.add(channelBox, relx=1, width=floor(self.max_x/6), height=floor(self.max_y/2))
-        messageBox = self.add(messageBox, relx=floor(self.max_x/6)+1,rely=1, height=floor(self.max_y)-6, width=self.max_x-floor(self.max_x/6)-4)
+        messageBox = self.add(messageBox, relx=floor(self.max_x/6)+1,rely=1, height=floor(self.max_y)-6, width=self.max_x-floor(self.max_x/6)-2)
         inputBox = self.add(inputBox, contained_widget_arguments={"Editable": True}, relx=floor(self.max_x/6)+1, rely=-5, height=4,width=self.max_x-floor(self.max_x/6)-2)
         inputBox.add_handlers({curses.ascii.CR: sendMessage})
-        #sendBotton = self.add(npyscreen.ButtonPress, relx=self.max_x-10, rely=-5, max_width=6, max_height=4)
+        inputBox.value = 'test'
+        inputBox.update()
         
         websocket = connect("wss://ws.revolt.lea.pet")
         websocket.send(json.dumps({"type": "Authenticate", "token": token}))
         messageBox.values.append('test')
         self.keypress_timeout = 1
+        threading.Thread(target=ws).start()
         self.edit()
-    def while_waiting(self, *args):
-        ws()
     def resize(self):
         global serverList
         global channelList
