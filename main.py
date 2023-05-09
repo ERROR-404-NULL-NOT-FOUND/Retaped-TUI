@@ -4,6 +4,7 @@ from websockets.sync.client import connect
 from math import floor
 import curses.ascii
 import threading
+import asyncio
 
 import json
 
@@ -55,6 +56,11 @@ class channel:
     type: str
     server: str
 
+class message:
+    id: str
+    author: str
+    content: str
+    replies: list
 
 cache = {
     "servers": {},
@@ -99,33 +105,49 @@ def buildChannelCache(data: dict):
         tmpChannel.type = i['channel_type']
         cache['channels'].update({i['_id']: tmpChannel})
 
-def renderMessage(message):
+def renderMessage(messageData):
     global messageBox
-    string: str
-    if message['author'] in cache['users'].keys():
-        author = cache['users'][message['author']].username
-        if message['content']:
-            string=f'[{author}]: {message["content"]}'
-        else:
-            string=f'[{author}]:<No content>'
+    reply=[]
+    author=''
+    if 'replies' in messageData.keys():
+        for i in messageData['replies']:
+            reply.append(i)
+    if 'masquerade' in messageData.keys():
+        author = messageData['masquerade']['name']
     else:
-        string=f'[{message["author"]}]: {message["content"]}'
-        threading.Thread(fetchUsername, args=[message['author']])
-    messageBox.values.append(string)
+        if messageData['author'] in cache['users'].keys():
+            author = cache['users'][messageData['author']].username
+        else:
+            #messageBox.values.append(f'[{messageData["author"]}]: {messageData["content"]}')
+            threading.Thread(target=fetchUsername, args=[messageData['author'], len(messageBox.values)-1, messageData['content']]).start()
+            return
+    renderedMessage = message()
+    renderedMessage.id = messageData['_id']
+    renderedMessage.author = author
+    renderedMessage.content = messageData['content']
+    renderedMessage.replies = reply
+    
+    messageBox.values.append(renderedMessage)
 
 def fetchUsername(userID, index, message):
     global token
     global messageBox
-    user = requests.get(f'https://api.revolt.lea.pet/users/{userID}', headers={'x-session-token': token}).json()
-    tmpUser = user()
-    tmpUser.id = user['_id']
-    tmpUser.username = user['username']
-    tmpUser.status = user['status'] if 'status' in user.keys() else False
-    tmpUser.online = user['online']
-    cache['users'].update({user['_id']: tmpUser})
-    #messageBox.values[index] = 
+    if not userID in cache['users'].keys():
+        userData = requests.get(f'https://api.revolt.lea.pet/users/{userID}', headers={'x-session-token': token}).json()
+        tmpUser = user()
+        tmpUser.id = userData['_id']
+        tmpUser.username = userData['username']
+        tmpUser.status = userData['status'] if 'status' in userData.keys() else False
+        tmpUser.online = userData['online']
+        cache['users'].update({userData['_id']: tmpUser})
+    else:
+        tmpUser = cache['users'][userID]
+#    messageBox.values[index] = f'[{tmpUser.username}]: {message}'
 
-def ws():
+def boilerplate():
+    asyncio.run(ws())
+
+async def ws():
     global messageBox
     global currentChannel
     global websocket
@@ -155,7 +177,7 @@ def ws():
 
 def fetchMessages(id: str):
     r = requests.get(
-        f'https://api.revolt.lea.pet/channels/{id}/messages', headers={'x-session-token': token})
+        f'https://api.revolt.lea.pet/channels/{id}/messages?include_users=true', headers={'x-session-token': token})
     return r.json()
 
 
@@ -202,8 +224,16 @@ class ChannelMultiLineAction(npyscreen.MultiLineAction):
         messageBox.name = act_on_this
         messageBox.update()
         messages = fetchMessages(currentChannel)
-        for i in reversed(range(len(messages))):
-            renderMessage(messages[i])
+        for i in messages['users']:
+            if not i['_id'] in cache['users'].keys():
+                tmpUser = user()
+                tmpUser.id = i['_id']
+                tmpUser.username = i['username']
+                tmpUser.status = i['status'] if 'status' in i.keys() else False
+                tmpUser.online = i['online']
+                cache['users'].update({i['_id']: tmpUser})
+        for i in reversed(range(len(messages['messages']))):
+            renderMessage(messages['messages'][i])
         messageBox.update()
         inputBox.edit()
 
@@ -219,17 +249,30 @@ class channelBox(npyscreen.BoxTitle):
         super().__init__(screen, contained_widget_arguments, *args, **keywords)
     _contained_widget = ChannelMultiLineAction
 
+class multiLineMessages(npyscreen.MultiLine):
+    allow_filtering=False
+    _contained_widget=npyscreen.MultiLineEdit
+    _contained_widgets=npyscreen.MultiLineEdit
+    _contained_widget_height=2
+    def display_value(self, vl: message):
+        self.contained_widget.editable=False
+        output=''
+        for i in vl.replies:
+            output+=f'> {i}\n'
+        output+=f'[{vl.author}] '
+        output+=f'{vl.content}'
+        return output
 
 class messageBox(npyscreen.BoxTitle):
     def __init__(self, screen, contained_widget_arguments=None, *args, **keywords):
         super().__init__(screen, contained_widget_arguments, *args, **keywords)
-    _contained_widget = npyscreen.MultiLine
+    _contained_widget = multiLineMessages
 
 
-class inputBox(npyscreen.BoxTitle):
+class inputTextBox(npyscreen.BoxTitle):
     def __init__(self, screen, contained_widget_arguments=None, *args, **keywords):
         super().__init__(screen, contained_widget_arguments, *args, **keywords)
-    __contained_widget = npyscreen.Textfield
+    _contained_widget = npyscreen.MultiLineEdit
 
 
 class TestApp(npyscreen.NPSAppManaged):
@@ -241,7 +284,7 @@ def sendMessage(totallyanargument):
     global inputBox
     global currentChannel
     global token
-    input = inputBox.value
+    input = inputBox._contained_widget.value
     inputBox.value = ''
     requests.post(f'https://api.revolt.lea.pet/channels/{currentChannel}/messages', headers={
                   'x-session-token': token}, data=json.dumps({'content': input}))
@@ -256,7 +299,9 @@ class MainForm(npyscreen.FormBaseNew):
         global channelList
         global serverList
         global inputBox
-        token = "bENKddDm_C75Yez6MCM_xrmNu2zDTtSME2pqUsxH9GTG_0ma_t6FgozDX3gxbvM7"
+        global F
+        F=self
+        token = ""
         self.name = 'Retaped TUI'
         self.FIX_MINIMUM_SIZE_WHEN_CREATED = True
         serverList = self.add(serverBox, relx=1, rely=1, width=floor(
@@ -265,16 +310,14 @@ class MainForm(npyscreen.FormBaseNew):
             self.max_x/6), height=floor(self.max_y/2))
         messageBox = self.add(messageBox, relx=floor(self.max_x/6)+1, rely=1,
                               height=floor(self.max_y)-6, width=self.max_x-floor(self.max_x/6)-2)
-        inputBox = self.add(npyscreen.BoxTitle, contained_widget_arguments={"Editable": True}, relx=floor(
+        inputBox = self.add(inputTextBox, relx=floor(
             self.max_x/6)+1, rely=-5, height=4, width=self.max_x-floor(self.max_x/6)-2)
-        inputBox.add_handlers({curses.ascii.CR: sendMessage})
-        inputBox.value = 'test'
-        inputBox.update()
+        inputBox._contained_widget.handlers  = {"^N": sendMessage}
 
         websocket = connect("wss://ws.revolt.lea.pet")
         websocket.send(json.dumps({"type": "Authenticate", "token": token}))
         self.keypress_timeout = 1
-        threading.Thread(target=ws).start()
+        threading.Thread(target=boilerplate).start()
         self.edit()
 
     def resize(self):
