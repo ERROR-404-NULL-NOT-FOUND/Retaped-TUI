@@ -1,4 +1,4 @@
-import npyscreen
+from . import npyscreen
 from . import globals, structures
 import threading
 import requests

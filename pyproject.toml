@@ -3,21 +3,21 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
 name = "retaped_tui"
-version = "1.0-rc4"
+version = "1.0-rc8"
 authors = [
   { name="Tetra Green", email="giggabyte6@gmail.com" },
 ]
 description = "A Revolt client for the terminal"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependancies = [
+dependencies = [
     "requests",
     "websockets",
-    "npyscreen"
+    "pyaml"
 ]
 [project.scripts]
 retaped-tui = "retaped_tui:run"

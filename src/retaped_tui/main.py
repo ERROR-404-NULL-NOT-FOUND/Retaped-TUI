@@ -1,4 +1,4 @@
-import npyscreen
+from . import npyscreen
 import requests
 from websockets.sync.client import connect
 from math import floor
@@ -11,6 +11,7 @@ import yaml
 from yaml import Loader
 import os
 import time
+import sys
 
 from . import login
 from . import globals
@@ -55,55 +56,55 @@ def buildChannelCache(data: dict):
         globals.cache['channels'].update({i['_id']: tmpChannel})
 
 
-
-def boilerplate():
-    try:
-        asyncio.run(ws())
-    except KeyboardInterrupt:
-        exit(0)
-
+def _exit():
+    exit()
 def wsInit():
     globals.websocket = connect(globals.wsEndpoint)
     globals.websocket.send(json.dumps({"type": "Authenticate", "token": globals.token}))
 
-
-async def ws():
-    try:
-        wsInit()
-    except TimeoutError:
-        npyscreen.notify('Connection FAILED')
-        time.sleep(1)
-        exit()
-    while True:
+class wsThread(threading.Thread):
+    def run(self):
         try:
-            message = globals.websocket.recv()
-        except TimeoutError:
-            npyscreen.notify('Reconnecting', title='Disconnected')
-            failed=True
-            while failed==True:
-                try:
-                    wsInit()
-                except TimeoutError:
-                    failed=True
-        message = json.loads(message)
-        match(message['type']):
-            case 'Message':
-                if message['channel'] == globals.currentChannel:
-                    globals.messageBox.renderMessage(message)
-                    globals.messageBox.update(globals.messageBox)
-            case 'MessageUpdate':
-                if message['channel'] == globals.currentChannel:
-                    globals.messageBox.updateMessage(message)
-                    globals.messageBox.update(globals.messageBox)
-            case 'Ready':
-                buildUserCache(message['users'])
-                buildServerCache(message['servers'])
-                buildChannelCache(message['channels'])
-                globals.serverList.values = []
-                for i in message['servers']:
-                    globals.serverList.values.append(i['name'])
-                globals.serverList.name = globals.localUser.username
-                globals.serverList.edit()
+            wsInit()
+        except:
+            npyscreen.notify('WS failed to connect', title='Connection failed')
+            time.sleep(1)
+            _exit()
+        while True:
+            try:
+                message = globals.websocket.recv()
+            except KeyboardInterrupt:
+                _exit()
+            except:
+                npyscreen.notify('Reconnecting', title='Disconnected')
+                failed=True
+                while failed==True:
+                    try:
+                        wsInit()
+                    except TimeoutError:
+                        failed=True
+
+            message = json.loads(message)
+            match(message['type']):
+                case 'Message':
+                    if message['channel'] == globals.currentChannel:
+                        globals.messageBox.renderMessage(message)
+                        globals.messageBox.update(globals.messageBox)
+                case 'MessageUpdate':
+                    if message['channel'] == globals.currentChannel:
+                        globals.messageBox.updateMessage(message)
+                        globals.messageBox.update(globals.messageBox)
+                case 'Ready':
+                    buildUserCache(message['users'])
+                    buildServerCache(message['servers'])
+                    buildChannelCache(message['channels'])
+                    globals.serverList.values = []
+                    for i in message['servers']:
+                        globals.serverList.values.append(i['name'])
+                    globals.serverList.name = globals.localUser.username
+                    globals.serverList.edit()
+    def raiseException(self):
+        self.killed=True
 
 
 
@@ -116,12 +117,12 @@ def sendMessage(totallyanargument):
         message = requests.post(f'{globals.apiEndpoint}/channels/{globals.currentChannel}/messages', headers={
             'x-session-token': globals.token}, data=json.dumps({'content': input, 'replies': globals.replies}))
         if message.status_code != 200:
-            npyscreen.notify(title='Failed to send')
+            npyscreen.notify(f'Status code: {message.status_code}', title='Failed to send')
             return 1
     else:
         message = requests.patch(f'{globals.apiEndpoint}/channels/{globals.currentChannel}/messages/{globals.editingMessageMsg.id}', headers={'x-session-token': globals.token}, data=json.dumps({'content': input}))
         if message.status_code != 200:
-                npyscreen.notify(title='Failed to send')
+                npyscreen.notify(f'Status code: {message.status_code}',title='Failed to send')
                 return 1
     globals.inputBox.value = ''
     clearReplies()
@@ -155,7 +156,6 @@ def editMessage(totallyanargument):
 
 class TestApp(npyscreen.NPSAppManaged):
     def onStart(self):
-        npyscreen.setTheme(npyscreen.Themes.ElegantTheme)
         globals.app=self
         try:
             if "XDG_CONFIG_DIR" in os.environ:
@@ -168,8 +168,7 @@ class TestApp(npyscreen.NPSAppManaged):
                 self.registerForm("LOGIN", login.LoginForm())
                 self.setNextForm("MAIN", MainForm())
         except KeyboardInterrupt:
-            exit(0)
-
+            _exit()
 class MainForm(npyscreen.FormBaseNew):
     def create(self):
         config = open(f'{globals.configPath}/Retaped.yaml', 'r')
@@ -180,14 +179,10 @@ class MainForm(npyscreen.FormBaseNew):
         globals.form=self
         self.name = 'Retaped TUI'
         self.FIX_MINIMUM_SIZE_WHEN_CREATED = True
-        globals.serverList = self.add(widgets.serverBox, relx=1, rely=1, width=floor(
-            self.max_x/6), height=floor(self.max_y/2)-1)
-        globals.channelList = self.add(widgets.channelBox, relx=1, width=floor(
-            self.max_x/6), height=floor(self.max_y/2))
-        globals.messageBox = self.add(widgets.messageBox, relx=floor(self.max_x/6)+1, rely=1,
-                              height=floor(self.max_y)-6, width=self.max_x-floor(self.max_x/6)-2)
-        globals.inputBox = self.add(widgets.inputTextBox,relx=floor(
-            self.max_x/6)+1, name='', rely=-5, height=4, width=self.max_x-floor(self.max_x/6)-2)
+        globals.serverList = self.add(widgets.serverBox, relx=1, rely=1, width=self.max_x//6, height=self.max_y//2-1)
+        globals.channelList = self.add(widgets.channelBox, relx=1, width=self.max_x//6, height=self.max_y//2-1)
+        globals.messageBox = self.add(widgets.messageBox, relx=self.max_x//6+1, rely=1,height=self.max_y-6, width=self.max_x-self.max_x//6-2)
+        globals.inputBox = self.add(widgets.inputTextBox,relx=self.max_x//6+1, name='', rely=-5, height=4, width=self.max_x-self.max_x//6-2)
         globals.inputBox.add_handlers({"!s": sendMessage, curses.ascii.ESC: clearReplies})
         globals.messageBox.add_handlers({"r": addReply})
         globals.messageBox.add_handlers({"e": editMessage})
@@ -199,19 +194,21 @@ class MainForm(npyscreen.FormBaseNew):
                 os.remove(f'{globals.configPath}/Retaped.yaml')
                 self.notify('Invalid token')
                 time.sleep(1)
-                exit(1)
+                _exit()
         except KeyboardInterrupt:
-            exit(0)
+            _exit()
         except:
             npyscreen.notify('Failed to request user profile', title='Failed to connect')
             time.sleep(1)
-            exit(1)
+            _exit
         tmpUser=tmpUser.json()
         globals.localUser = structures.user()
         globals.localUser.id = tmpUser['_id']
         globals.localUser.username = tmpUser['username']
         
-        threading.Thread(target=boilerplate).start()
+        globals.wsThread = wsThread()
+        globals.wsThread.daemon=True
+        globals.wsThread.start()
         script_dir = os.path.dirname(__file__)
         for i in open(f'{script_dir}/aboutRT-tui.txt', 'r'):
             tmpFakeMessage = structures.message()
@@ -231,26 +228,38 @@ class MainForm(npyscreen.FormBaseNew):
                 except npyscreen.NotEnoughSpaceForWidget:
                     pass
                 except KeyboardInterrupt:
-                    exit(0)
-
+                    globals.wsThread._is_running=False
+            
+        except KeyboardInterrupt:
+            _exit
     def resize(self):
-        self.refresh()
-        globals.serverList.height, globals.serverList.width = floor(
-            self.max_y/2)-1, floor(self.max_x/6)
-        globals.channelList.height, globals.channelList.width = floor(
-            self.max_y/2), floor(self.max_x/6)
+        serverList = globals.serverList.entry_widget
+        channelList = globals.channelList.entry_widget
+        messageBox = globals.messageBox.entry_widget
+        inputBox = globals.inputBox.entry_widget
+        
+        serverList.width, serverList.width =  self.max_x//6-2, self.max_y//2-3
+        channelList.width, channelList.max_height = self.max_x//6-2, self.max_y//2-3
+        messageBox.relx, messageBox.height, messageBox.width = self.max_x//6+1, self.max_y-8, self.max_x-self.max_x//6-4
+        inputBox.relx, inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-4
+        
+        globals.serverList.width, globals.serverList.width =  self.max_x//6, self.max_y//2-1
+        globals.channelList.width, globals.channelList.max_height = self.max_x//6, self.max_y//2-1
+        globals.messageBox.relx, globals.messageBox.height, globals.messageBox.width = self.max_x//6+1, self.max_y-6, self.max_x-self.max_x//6-2
+        globals.inputBox.relx, globals.inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-2
+        globals.serverList._recalculate_size()
+        globals.channelList._recalculate_size()
+        globals.messageBox._recalculate_size()
+        globals.inputBox._recalculate_size()
+        
+        serverList.update(clear=True)
+        channelList.update(clear=True)
+        messageBox.update(clear=True)
+        inputBox.update(clear=True)
 
-        globals.messageBox.relx, globals.messageBox.height, globals.messageBox.width = floor(
-            self.max_x/6)+1, floor(self.max_y)-6, self.max_x-floor(self.max_x/6)-2
-        globals.inputBox.relx, globals.inputBox.width = floor(
-            self.max_x/6)+1, self.max_x-floor(self.max_x/6)-2
-        self.display()
 
 try:
     TestApp().run()
 except KeyboardInterrupt:
-    exit(0)
-except Exception as e:
-    print(e)
-    exit()
+    _exit()
 # asyncio.run(ws())

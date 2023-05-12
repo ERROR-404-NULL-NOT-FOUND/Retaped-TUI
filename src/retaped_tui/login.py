@@ -1,4 +1,4 @@
-import npyscreen
+from . import npyscreen
 import requests
 import json
 import yaml

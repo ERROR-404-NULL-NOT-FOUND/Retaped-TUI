@@ -8,7 +8,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "src/retaped_tui/main.py",
+            "program": "/home/tetra/.local/bin/retaped-tui",
             "console": "externalTerminal",
             "justMyCode": false
         }
