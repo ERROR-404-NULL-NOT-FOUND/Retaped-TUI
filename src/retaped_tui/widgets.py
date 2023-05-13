@@ -95,11 +95,7 @@ class multiLineMessages(npyscreen.MultiSelect):
     def display_value(self, vl: structures.message):
         output = ''
         mentioned = False
-        for i in vl.replies:
-            if i in globals.cache['messages']:
-                output += f'> {globals.cache["messages"][i].content}\n'
-            else:
-                output += f'>Unloaded Message'
+
         if globals.localUser.id in vl.mentions:
             mentioned = True
         if vl.author:
@@ -123,7 +119,16 @@ class messageBox(npyscreen.BoxTitle):
         author = ''
         if 'replies' in messageData.keys():
             for i in messageData['replies']:
-                reply.append(i)
+                if i in globals.cache['messages']:
+                    replyContent=f'> {globals.cache["messages"][i].content}'
+                else:
+                    replyContent=f'>Unloaded Message'
+                reply=structures.message()
+                reply.content=replyContent
+                reply.author=''
+                reply.id=''
+                reply.mentions=[]
+                self.values.append(reply)
         if 'mentions' in messageData.keys():
             for i in messageData['mentions']:
                 mentions.append(i)

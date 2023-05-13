@@ -136,7 +136,7 @@ def clearReplies():
     globals.inputBox.update()
 
 def addReply(totallyanargument):
-    if not globals.editingMessage:
+    if not globals.editingMessage and (message:=globals.messageBox.values[globals.highlightedIndex]).id!='':
         message = globals.messageBox.values[globals.highlightedIndex]
         globals.replies.append({'id': message.id, 'mention': False})
         globals.inputBox.name+="> "+message.content+"\n"
@@ -179,7 +179,7 @@ class MainForm(npyscreen.FormBaseNew):
         globals.form=self
         self.name = 'Retaped TUI'
         self.FIX_MINIMUM_SIZE_WHEN_CREATED = True
-        globals.serverList = self.add(widgets.serverBox, relx=1, rely=1, width=self.max_x//6, height=self.max_y//2-1)
+        globals.serverList = self.add(widgets.serverBox, relx=1, rely=1, width=self.max_x//6, height=self.max_y//2)
         globals.channelList = self.add(widgets.channelBox, relx=1, width=self.max_x//6, height=self.max_y//2-1)
         globals.messageBox = self.add(widgets.messageBox, relx=self.max_x//6+1, rely=1,height=self.max_y-6, width=self.max_x-self.max_x//6-2)
         globals.inputBox = self.add(widgets.inputTextBox,relx=self.max_x//6+1, name='', rely=-5, height=4, width=self.max_x-self.max_x//6-2)
@@ -247,10 +247,10 @@ class MainForm(npyscreen.FormBaseNew):
         globals.channelList.width, globals.channelList.max_height = self.max_x//6, self.max_y//2-1
         globals.messageBox.relx, globals.messageBox.height, globals.messageBox.width = self.max_x//6+1, self.max_y-6, self.max_x-self.max_x//6-2
         globals.inputBox.relx, globals.inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-2
-        globals.serverList._recalculate_size()
-        globals.channelList._recalculate_size()
-        globals.messageBox._recalculate_size()
-        globals.inputBox._recalculate_size()
+        globals.serverList._resize()
+        globals.channelList._resize()
+        globals.messageBox._resize()
+        globals.inputBox._resize()
         
         serverList.update(clear=True)
         channelList.update(clear=True)
