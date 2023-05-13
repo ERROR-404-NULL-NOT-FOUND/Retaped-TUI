@@ -104,8 +104,8 @@ class Checkbox(_ToggleControl):
         if l_a_width < 1:
              raise ValueError("Width of checkbox + label must be at least 6")
            
-        self.label_area = Textfield(screen, rely=self.rely, relx=self.relx+5, 
-                      width=self.width-5, value=self.name)
+        self.label_area = Textfield(screen, rely=self.rely, relx=self.relx, 
+                      width=self.width, value=self.name)
         
 
     def update(self, clear=True):

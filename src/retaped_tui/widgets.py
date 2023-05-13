@@ -5,17 +5,15 @@ import requests
 
 
 def fetchUsername(userID, index):
-    if not userID in globals.cache['users'].keys():
-        userData = requests.get(f'{globals.apiEndpoint}/users/{userID}', headers={
-                                'x-session-token': globals.token}).json()
-        tmpUser = structures.user()
-        tmpUser.id = userData['_id']
-        tmpUser.username = userData['username']
-        tmpUser.status = userData['status'] if 'status' in userData.keys() else False
-        tmpUser.online = userData['online']
-        globals.cache['users'].update({userData['_id']: tmpUser})
-    else:
-        tmpUser = globals.cache['users'][userID]
+    userData = requests.get(f'{globals.apiEndpoint}/users/{userID}', headers={
+                            'x-session-token': globals.token}).json()
+    tmpUser = structures.user()
+    tmpUser.id = userData['_id']
+    tmpUser.username = userData['username']
+    tmpUser.status = userData['status'] if 'status' in userData.keys() else False
+    tmpUser.online = userData['online']
+    globals.cache['users'].update({userData['_id']: tmpUser})
+
     globals.messageBox.values[index].author = tmpUser.username
     globals.messageBox.update()
 
@@ -57,6 +55,7 @@ class ChannelMultiLineAction(npyscreen.MultiLineAction):
         globals.messageBox._contained_widget.cursor_line = len(globals.messageBox.values)
         globals.messageBox.update()
         self.editing=False
+        #globals.messageBox.reset_cursor()
 
 
 class serverBox(npyscreen.BoxTitle):
@@ -81,14 +80,12 @@ class channelBox(npyscreen.BoxTitle):
         globals.channelList.update()
 
 
-class multiLineMessages(npyscreen.MultiSelect):
+class multiLineMessages(npyscreen.MultiSelectFixed):
     def __init__(self, screen, values=None, value=None, slow_scroll=False, scroll_exit=False, return_exit=False, select_exit=False, exit_left=False, exit_right=False, widgets_inherit_color=False, always_show_cursor=False, allow_filtering=True, **keywords):
         self.allow_filtering = False
         self.check_cursor_move = True
-        self._contained_widget = npyscreen.MultiLineEdit
-        self._contained_widgets.editable = False
-        self._contained_widgets.False_box = ''
-        self._contained_widgets.True_box = ''
+        self._contained_widgets.True_box=''
+        self._contained_widgets.False_box=''
         super().__init__(screen, values, value, slow_scroll, scroll_exit, return_exit, select_exit,
                          exit_left, exit_right, widgets_inherit_color, always_show_cursor, allow_filtering, **keywords)
 
@@ -150,7 +147,7 @@ class messageBox(npyscreen.BoxTitle):
         renderedMessage.mentions = mentions
         globals.cache['messages'].update({renderedMessage.id: renderedMessage})
         self.values.append(renderedMessage)
-        self.update()
+        self.display()
         if globals.localUser.id in renderedMessage.mentions:
             test = self._my_widgets[0]._my_widgets[4]
             test.highlight=True
@@ -171,9 +168,18 @@ class messageBox(npyscreen.BoxTitle):
             npyscreen.notify('Failed to request messages',title='Error')
             return False
         return r.json()
+#    def resize(self):
+#        self.relx, self.height, self.width = globals.form.max_x//6+1, globals.form.max_y-6, globals.form.max_x-globals.form.max_x//6-2
+#        self.entry_widget.relx, self.entry_widget.height, self.entry_widget.width = globals.form.max_x//6+2, globals.form.max_y-6, globals.form.max_x-globals.form.max_x//6-2
+#        self.entry_widget.request_height, self.entry_widget.request_width=True, True
+#        self.update(clear=True)
 
 
 class inputTextBox(npyscreen.BoxTitle):
     def __init__(self, screen, contained_widget_arguments=None, *args, **keywords):
         super().__init__(screen, contained_widget_arguments, *args, **keywords)
     _contained_widget = npyscreen.MultiLineEdit
+    def resize(self):
+        self.relx, self.width = globals.form.max_x//6+1, globals.form.max_x-globals.form.max_x//6-4
+        self.entry_widget.relx = globals.form.max_x//6+2
+        self.update(clear=True)

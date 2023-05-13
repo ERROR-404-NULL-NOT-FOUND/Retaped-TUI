@@ -25,7 +25,6 @@ def init():
     global form
     global editingMessage
     global editingMessageMsg
-    
     editingMessage = False
 
 

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
 name = "retaped_tui"
-version = "1.0-rc8"
+version = "1.0-rc9"
 authors = [
   { name="Tetra Green", email="giggabyte6@gmail.com" },
 ]

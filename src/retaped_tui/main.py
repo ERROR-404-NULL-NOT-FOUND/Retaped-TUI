@@ -200,7 +200,7 @@ class MainForm(npyscreen.FormBaseNew):
         except:
             npyscreen.notify('Failed to request user profile', title='Failed to connect')
             time.sleep(1)
-            _exit
+            _exit()
         tmpUser=tmpUser.json()
         globals.localUser = structures.user()
         globals.localUser.id = tmpUser['_id']
@@ -232,31 +232,29 @@ class MainForm(npyscreen.FormBaseNew):
             
         except KeyboardInterrupt:
             _exit
-    def resize(self):
-        serverList = globals.serverList.entry_widget
-        channelList = globals.channelList.entry_widget
-        messageBox = globals.messageBox.entry_widget
-        inputBox = globals.inputBox.entry_widget
-        
-        serverList.width, serverList.width =  self.max_x//6-2, self.max_y//2-3
-        channelList.width, channelList.max_height = self.max_x//6-2, self.max_y//2-3
-        messageBox.relx, messageBox.height, messageBox.width = self.max_x//6+1, self.max_y-8, self.max_x-self.max_x//6-4
-        inputBox.relx, inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-4
-        
-        globals.serverList.width, globals.serverList.width =  self.max_x//6, self.max_y//2-1
-        globals.channelList.width, globals.channelList.max_height = self.max_x//6, self.max_y//2-1
-        globals.messageBox.relx, globals.messageBox.height, globals.messageBox.width = self.max_x//6+1, self.max_y-6, self.max_x-self.max_x//6-2
-        globals.inputBox.relx, globals.inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-2
-        globals.serverList._resize()
-        globals.channelList._resize()
-        globals.messageBox._resize()
-        globals.inputBox._resize()
-        
-        serverList.update(clear=True)
-        channelList.update(clear=True)
-        messageBox.update(clear=True)
-        inputBox.update(clear=True)
-
+#    def resize(self):
+#
+#        
+#        serverList.width, serverList.height =  self.max_x//6-2, self.max_y//2-3
+#        serverList.max_width, channelList.max_width=40,40
+#        channelList.width, channelList.height = self.max_x//6-2, self.max_y//2-3
+#        messageBox.relx, messageBox.height, messageBox.width = self.max_x//6+1, self.max_y-8, self.max_x-self.max_x//6-4
+#        inputBox.relx, inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-4
+#        
+#        globals.serverList.width, globals.serverList.height =  self.max_x//6, self.max_y//2-1
+#        globals.channelList.width, globals.channelList.max_height = self.max_x//6, self.max_y//2-1
+#        globals.messageBox.relx, globals.messageBox.height, globals.messageBox.width = self.max_x//6+1, self.max_y-6, self.max_x-self.max_x//6-2
+#        globals.inputBox.relx, globals.inputBox.width=self.max_x//6+1, self.max_x-self.max_x//6-2
+#        #globals.serverList._resize()
+#        #globals.channelList._resize()
+#        #globals.messageBox._resize()
+#        #globals.inputBox._resize()
+#        
+#        serverList.update(clear=True)
+#        channelList.update(clear=True)
+#        messageBox.update(clear=True)
+#        inputBox.update(clear=True)
+#
 
 try:
     TestApp().run()
