@@ -52,7 +52,6 @@ class ChannelMultiLineAction(npyscreen.MultiLineAction):
         for i in reversed(range(len(messages['messages']))):
             messageData = messages['messages'][i]
             globals.messageBox.renderMessage(messageData)
-        globals.messageBox._contained_widget.cursor_line = len(globals.messageBox.values)
         globals.messageBox.update()
         self.editing=False
         #globals.messageBox.reset_cursor()
@@ -84,8 +83,11 @@ class multiLineMessages(npyscreen.MultiSelectFixed):
     def __init__(self, screen, values=None, value=None, slow_scroll=False, scroll_exit=False, return_exit=False, select_exit=False, exit_left=False, exit_right=False, widgets_inherit_color=False, always_show_cursor=False, allow_filtering=True, **keywords):
         self.allow_filtering = False
         self.check_cursor_move = True
-        self._contained_widgets.True_box=''
-        self._contained_widgets.False_box=''
+        self._contained_widgets=npyscreen.TitleFixedText
+        self._contained_widgets.allow_override_begin_entry_at=False 
+        self._contained_widgets.use_two_lines=False
+        self._contained_widgets.height = 1
+        self._contained_widget_height=1
         super().__init__(screen, values, value, slow_scroll, scroll_exit, return_exit, select_exit,
                          exit_left, exit_right, widgets_inherit_color, always_show_cursor, allow_filtering, **keywords)
 
@@ -95,10 +97,10 @@ class multiLineMessages(npyscreen.MultiSelectFixed):
 
         if globals.localUser.id in vl.mentions:
             mentioned = True
-        if vl.author:
-            output += f'[{vl.author}] '
+        #if vl.author:
+        #    output += f'[{vl.author}] '
         output += f'{vl.content}'
-        return [output, mentioned]
+        return [output, mentioned, vl.author]
 
     def when_cursor_moved(self):
         globals.highlightedIndex = self.cursor_line
@@ -147,12 +149,7 @@ class messageBox(npyscreen.BoxTitle):
         renderedMessage.mentions = mentions
         globals.cache['messages'].update({renderedMessage.id: renderedMessage})
         self.values.append(renderedMessage)
-        self.display()
-        if globals.localUser.id in renderedMessage.mentions:
-            test = self._my_widgets[0]._my_widgets[4]
-            test.highlight=True
-            test.do_colors()
-            test.update()
+
         
     def updateMessage(self, message):
         for i in self.values:

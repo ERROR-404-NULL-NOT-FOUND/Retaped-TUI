@@ -104,17 +104,31 @@ the same effect can be achieved by altering the __str__() method of displayed ob
         self.reset_display_cache()
         self.display()
     
-    def make_contained_widgets(self, ):
+    def make_contained_widgets(self):
         self._my_widgets = []
         for h in range(self.height // self.__class__._contained_widget_height):
-            self._my_widgets.append(
-                    self._contained_widgets(self.parent, 
-                        rely=(h*self._contained_widget_height)+self.rely, 
-                        relx = self.relx, 
-                        max_width=self.width, 
-                        max_height=self.__class__._contained_widget_height
-                    )
+            if self._contained_widgets == titlefield.TitleFixedText:
+                self._my_widgets.append(
+                    titlefield.TitleFixedText(self.parent,
+                                            rely=(
+                                                h*self._contained_widget_height)+self.rely,
+                                            relx=self.relx,
+                                            max_width=self.width,
+                                            max_height=1,
+                                            name='                                ',
+                                            use_two_lines=False,
+                                            labelColor='STANDOUT'
+                                            )
                 )
+            else:
+                self._my_widgets.append(
+                        self._contained_widgets(self.parent, 
+                            rely=(h*self._contained_widget_height)+self.rely, 
+                            relx = self.relx, 
+                            max_width=self.width, 
+                            max_height=self.__class__._contained_widget_height
+                        )
+                    )
 
 
     def display_value(self, vl):

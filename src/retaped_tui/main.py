@@ -1,17 +1,14 @@
 from . import npyscreen
 import requests
 from websockets.sync.client import connect
-from math import floor
 import curses.ascii
 import threading
-import asyncio
 
 import json
 import yaml
 from yaml import Loader
 import os
 import time
-import sys
 
 from . import login
 from . import globals
@@ -180,10 +177,11 @@ class MainForm(npyscreen.FormBaseNew):
         self.name = 'Retaped TUI'
         self.FIX_MINIMUM_SIZE_WHEN_CREATED = True
         globals.serverList = self.add(widgets.serverBox, relx=1, rely=1, width=self.max_x//6, height=self.max_y//2)
-        globals.channelList = self.add(widgets.channelBox, relx=1, width=self.max_x//6, height=self.max_y//2-1)
+        globals.channelList = self.add(widgets.channelBox, relx=1, width=self.max_x//6, height=self.max_y//2-3)
         globals.messageBox = self.add(widgets.messageBox, relx=self.max_x//6+1, rely=1,height=self.max_y-6, width=self.max_x-self.max_x//6-2)
         globals.inputBox = self.add(widgets.inputTextBox,relx=self.max_x//6+1, name='', rely=-5, height=4, width=self.max_x-self.max_x//6-2)
-        globals.inputBox.add_handlers({"!s": sendMessage, curses.ascii.ESC: clearReplies})
+        globals.inputBox.add_handlers({"!s": sendMessage})
+        globals.inputBox.add_handlers({curses.ascii.ESC: clearReplies})
         globals.messageBox.add_handlers({"r": addReply})
         globals.messageBox.add_handlers({"e": editMessage})
 

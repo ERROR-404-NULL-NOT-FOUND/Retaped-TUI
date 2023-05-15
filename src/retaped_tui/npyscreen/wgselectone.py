@@ -23,23 +23,20 @@ class SelectOne(multiline.MultiLine):
     def _print_line(self, line, value_indexer):
         try:
             display_this = self.display_value(self.values[value_indexer])
-            line.values = display_this[0]
-            line.hide = False
-            if hasattr(line, 'selected'):
-                if (value_indexer in self.value and (self.value is not None)):
-                    line.selected = True
-                else:
-                    line.selected = False
-            # Most classes in the standard library use this
+    
+            if display_this[2] != '':
+                line.name = display_this[2]
+                line.label_widget.value = display_this[2]
             else:
-                if (value_indexer in self.value and (self.value is not None)):
-                    line.show_bold = True
-                    line.name = display_this[0]
-                    line.value = True
-                else:
-                    line.show_bold = False
-                    line.name = display_this[0]
-                    line.value = False
+                line.label_widget.value = ''
+                line.name = ''
+            line.value = display_this[0]
+            line.hide = False
+            if (value_indexer == self.cursor_line and self.editing):
+                line.entry_widget.highlight = True
+            else:
+                line.entry_widget.highlight = False
+            # Most classes in the standard library use this
                     
             if value_indexer in self._filtered_values_cache:
                 line.important = True
